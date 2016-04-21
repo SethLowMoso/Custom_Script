@@ -7,7 +7,7 @@ set folderObj = objFileSys.GetFolder(folderName)
 set fileColl = folderObj.Files
 set objRegEx = new RegExp
  
-objRegEx.Pattern = "__________" ' characters that you want removed. 
+objRegEx.Pattern = "__" ' characters that you want removed. 
 objRegEx.Global = true
  
 for each objFile in fileColl
