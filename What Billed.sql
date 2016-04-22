@@ -21,8 +21,8 @@ SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
 	declare @BillingStartDate date;
 	declare @BillingEndDate datetime;
 
-	SET @OriginaBilllingDate = '4/1/2016'--CONVERT(DATE, GETDATE(), 101)--'9/4/2015'
-	SET @BillingStartDate = '4/1/2016'--CONVERT(DATE, GETDATE(), 101)--'9/4/2015'--
+	SET @OriginaBilllingDate = '4/19/2016'--CONVERT(DATE, GETDATE(), 101)--'9/4/2015'
+	SET @BillingStartDate = '4/20/2016'--CONVERT(DATE, GETDATE(), 101)--'9/4/2015'--
 	SET @BillingEndDate = DATEADD(ss,-1,CONVERT(DATETIME,DATEADD(DAY,1,CONVERT(DATE,GETDATE(),101))))--'9/4/2015 23:59:59'--
 
 
@@ -355,14 +355,6 @@ SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
 					(@OriginaBilllingDate between convert(date,sps.BeginTime,101) and convert(date,led.EndTime,101))
 				)	
 			;
-	
-	--declare @OriginaBilllingDate date;
-	--declare @BillingStartDate date;
-	--declare @BillingEndDate datetime;
-
-	--SET @OriginaBilllingDate = '4/1/2016'--CONVERT(DATE, GETDATE(), 101)--'9/4/2015'
-	--SET @BillingStartDate = '4/1/2016'--CONVERT(DATE, GETDATE(), 101)--'9/4/2015'--
-	--SET @BillingEndDate = DATEADD(ss,-1,CONVERT(DATETIME,DATEADD(DAY,1,CONVERT(DATE,GETDATE(),101))))--'9/4/2015 23:59:59'--
 
 	IF (OBJECT_ID('tempdb..#Tran') IS NOT NULL) DROP TABLE #Tran
 
@@ -455,6 +447,12 @@ SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
 			, convert(date,sps.BeginTime,101) 
 			, convert(date,sps.EndTime,101) 
 
+SELECT *
+FROM #Final
+
+
+
+
 
 
 SELECT 'No PaymentProcessRequestID',* 
@@ -467,175 +465,80 @@ WHERE [MOSOPay-Transaction] IS NULL
 			
 
 
---IF(Object_ID('TSI_Tactical.dbo.Staging_WhatBilled_JAN') IS NOt NULL) DROP TABLE TSI_Tactical.dbo.Staging_WhatBilled_JAN
-
 DECLARE @BillingValidation INT = 1,
-		@DevCore BIT = 1;
+		@DevCore BIT = 1,
+		@StagingTable INT = 0,
+		@CompleteValidation INT = 0,
+		@VAL_BillDate DATE = CONVERT(DATE,GETDATE(),101);
 
-
---IF (@DevCore = 0 AND @BillingValidation = 1) 
---	BEGIN
---		SELECT *
---		--INTO TSI_Tactical.dbo.Staging_WhatBilled
---		INTO TSI_Tactical.dbo.Staging_WhatBilled_JAN
---		FROM #Final f
-
-
---		SELECT * 
---		FROM TSI_Tactical.dbo.Staging_WhatBilled_JAN
---		--WHERE b.mair
 
 
 		--->>> BEGIN VALIDATION SCRIPTs
-				DECLARE @VAL_BillDate DATE = CONVERT(DATE,GETDATE(),101)
+IF(@BillingValidation = 1)
+	BEGIN
+		SELECT COUNT(*) AS RecordCount FROM #Final
+		SELECT 'SALE' AS [Type],*  FROM #Final WHERE txType = 'Sale'
+		SELECT 'PAYMENT' AS [Type],*  FROM #Final WHERE txType = 'Payment'
 
---				SELECT COUNT(*) FROM TSI_Tactical.dbo.Staging_WhatBilled_DEC b 
-
-
-
-
-
---	END
---IF (@DevCore = 1 AND @BillingValidation = 1) 
---	BEGIN
-
---
-DROP TABLE TSI_Tactical.dbo.Storage_April_WhatBilled_Final
-
-SELECT * 
-INTO TSI_Tactical.dbo.Storage_April_WhatBilled_Final
-FROM #Final f
-
-SELECT COUNT(*)
-FROM TSI_Tactical.dbo.Storage_april_WhatBilled_Final
-
-SELECT *  
-FROM TSI_Tactical.dbo.Storage_april_WhatBilled_Final
-WHERE txType = 'Sale'
-
-SELECT * 
-FROM TSI_Tactical.dbo.Storage_april_WhatBilled_Final
-WHERE txType = 'Payment'
+		IF(@StagingTable = 1)
+			BEGIN
+				DROP TABLE TSI_Tactical.dbo.Storage_April_WhatBilled_Final
+				
+				SELECT *  
+				INTO TSI_Tactical.dbo.Storage_April_WhatBilled_Final
+				FROM #Final f
+			END
 
 
-		--->>> BEGIN VALIDATION SCRIPTs
-DECLARE @VAL_BillDate DATE = CONVERT(DATE,GETDATE(),101)
+		IF(@CompleteValidation = 1)
+			BEGIN
+				--->>> BEGIN VALIDATION SCRIPTs
+
+				SELECT 'Sponsor Transfer Payments', * 
+						FROM #Final b 
+						WHERE [MOSOPay-Transaction] IS NULL 
+							AND TxType = 'Payment'
+							AND Description LIKE '%Sponsor%'
 
 
-SELECT * FROM TSI_Tactical.dbo.Storage_April_WhatBilled_Final b 
-WHERE [MOSOPay-Transaction] IS NULL 
-		AND TxType = 'Payment'
-		AND Description LIKE '%Sponsor%'
+				SELECT 'Billing Date Not Today',* 
+						FROM #Final b 
+						WHERE txtype = 'sale' 
+							AND mairBillDate != @VAL_BillDate 
+							AND mairBillDate != DATEADD(DAY,-1,@VAL_BillDate)
 
-SELECT *
-FROM PaymentProcessRequest p 
-WHERE TxPaymentID= 21743871
+				--Expected 0
+				SELECT 'Payment Due Date Out of Alignment',* 
+						FROM #Final b 
+						WHERE mairBillDate != maprDueDate
 
-SELECT 'Billing Date Not Today',* FROM TSI_Tactical.dbo.Storage_April_WhatBilled_Final b WHERE txtype = 'sale' and mairBillDate != @VAL_BillDate AND mairBillDate != DATEADD(DAY,-1,@VAL_BillDate)
+				--
+				SELECT 'Premier BabySitting',* FROM #Final b WHERE agreementname like '%Premier Babysitting%' AND txtype = 'sale'ORDER BY MemberID, MemberAgreementId
 
---Expected 0
-SELECT 'Payment Due Date Out of Alignment',* FROM TSI_Tactical.dbo.Storage_April_WhatBilled_Final b WHERE mairBillDate != maprDueDate
-
---
-SELECT 'Premier BabySitting',* FROM TSI_Tactical.dbo.Storage_April_WhatBilled_Final b WHERE agreementname like '%Premier Babysitting%' AND txtype = 'sale'ORDER BY MemberID, MemberAgreementId
---2400 aprox No PaymentProcessRequestIDs
-SELECT 'No PaymentProcessRequestID',* FROM TSI_Tactical.dbo.Storage_April_WhatBilled_Final b 
-		WHERE [MOSOPay-Transaction] IS NULL 
-			AND txtype = 'Payment' 
-			AND Description not like '%Transfer%'
-			AND (PaymentAmount > 0 OR PaymentAmount < 0)
+				--2400 aprox No PaymentProcessRequestIDs
+				SELECT 'No PaymentProcessRequestID',* 
+						FROM #Final b 
+						WHERE [MOSOPay-Transaction] IS NULL 
+							AND txtype = 'Payment' 
+							AND Description not like '%Transfer%'
+							AND (PaymentAmount > 0 OR PaymentAmount < 0)
 			
-SELECT 'MAJOR PROBLEM - Closed BU',* FROM TSI_Tactical.dbo.Storage_April_WhatBilled_Final b WHERE txtBusinessUnitID IN (2,205, 54)
-
---DECLARE @VAL_BillDate DATE = CONVERT(DATE,GETDATE(),101)
-
-SELECT 'Suspension Not Started Issue'
-	, *
-FROM TSI_Tactical.dbo.Storage_April_WhatBilled_Final b
-WHERE txType = 'Payment'
-	AND SuspensionStart <= @Val_BillDate 
-	AND SuspensionEnd > @VAL_BillDate
-	AND AgreementStatus != 'Freeze'
-
-SELECT 	'Suspension Not Ended Issue'
-	, *
-FROM TSI_Tactical.dbo.Storage_April_WhatBilled_Final b
-WHERE txType = 'Payment'
-	AND SuspensionEnd < @VAL_BillDate
-	AND AgreementStatus = 'Freeze'
-
---SELECT * FROM MemberAgreementInvoiceRequest WHERE MemberAgreementID = 3479928
---SELECT * FROM MemberAgreementPaymentRequest mp INNER JOIN MemberAgreementInvoiceRequest mr ON mr.MemberAgreementInvoiceRequestId = mp.MemberAgreementInvoiceRequestId WHERE mr.MemberAgreementID = 3479928
---SELECT * FROM TxInvoice  i INNER JOIN PartyRole p ON I.PartyRoleId = p.PartyRoleId  WHERE RoleId = '8353992'
---SELECT * FROM TSI_TargetedSyncAudit  t WHERE t.MemberAgreementID = 3479928 
-
---SELECT * FROM #Final WHERE TxType = 'Payment' 
-
---SELECT 'BackBilled' AS Error, * FROM TSI_Tactical.dbo.Storage_March_WhatBilled_Final WHERE mairBillDate < CONVERT(DATE,GETDATE(),101)  AND txtype = 'sale' AND SaleAmount > 0
---UNION			SELECT 'FREEZE' AS Error,* FROM TSI_Tactical.dbo.Storage_March_WhatBilled_Final WHERE AgreementStatus = 'Freeze' AND SaleAmount > 15 AND txtype = 'sale' AND SaleAmount > 0 AND suspensionstart < CONVERT(DATE,GETDATE(),101) AND SuspensionEnd > CONVERT(DATE,GETDATE(),101)
---UNION			SELECT 'Payment Due Date Out of Alignment' AS Error,* FROM TSI_Tactical.dbo.Storage_March_WHatBilled_Final b WHERE mairBillDate != maprDueDate
---UNION			SELECT 'MAJOR PROBLEM - Closed BU' AS Error,* FROM TSI_Tactical.dbo.Storage_March_WHatBilled_Final b WHERE txtBusinessUnitID IN (2)  AND txtype = 'sale' AND SaleAmount > 0
---UNION			SELECT 'Cancelled Agreement' AS Error, * FROM TSI_Tactical.dbo.Storage_March_WHatBilled_Final b WHERE CancellationStartDate <= CONVERT(DATE,GETDATE(),101) AND SaleAmount > 0
---UNION			SELECT 'No PaymentProcessRequestID' AS Error,f.* FROM TSI_Tactical.dbo.Storage_March_WHatBilled_Final f WHERE [MOSOPay-Transaction] IS NULL AND txtype = 'Payment' AND Description not like '%Transfer%'
-
---UNION			SELECT 'Premier BabySitting',* FROM TSI_Tactical.dbo.Storage_March_WHatBilled_Final b WHERE agreementname like '%Premier Babysitting%' AND txtype = 'sale' AND SaleAmount > 0
-
--- SELECT CONCAT('D:\MTP\TSI\Moso.TaskProcessor.exe /tenantIds 204 /SendBatch /businessUnitIds ', BusinessUnitID)  FROM #BUs
-
-					--WHERE TxType = 'Sale'
-/*
---SELECT * FROM #Final f
-		--->>> BEGIN VALIDATION SCRIPTs
-				--DECLARE @VAL_BillDate DATE = CONVERT(DATE,GETDATE(),101)
-
-				--SELECT COUNT(*) FROM #Final b 
-
-				SELECT * FROM TSI_Tactical.dbo.Storage_Feb_WHatBilled_Final
-
-				----SELECT 'Billing Date Not Today',* FROM #Final b WHERE txtype = 'sale' and mairBillDate != @VAL_BillDate AND mairBillDate != DATEADD(DAY,-1,@VAL_BillDate)
-				SELECT 'Payment Due Date Out of Alignment',* FROM TSI_Tactical.dbo.Storage_Feb_WHatBilled_Final b WHERE mairBillDate != maprDueDate AND txtype = 'Sale'
-				SELECT 'Premier BabySitting',* FROM TSI_Tactical.dbo.Storage_Feb_WHatBilled_Final b WHERE agreementname like '%Premier Babysitting%' AND txtype = 'sale'ORDER BY MemberID, MemberAgreementId
-				SELECT 'BackBilling', * FROM TSI_Tactical.dbo.Storage_Feb_WHatBilled_Final --WHERE 
-				SELECT 'No PaymentProcessRequestID',f.* FROM #Final f INNER JOIN #BUs b ON f.txtBusinessUnitId = b.BusinessUnitId WHERE [MOSOPay-Transaction] IS NULL AND txtype = 'Payment' AND Description not like '%Transfer%'
-				SELECT 'MAJOR PROBLEM - Closed BU',* FROM #Final b WHERE txtBusinessUnitID IN (2)
-
-				--SELECT * FROM PaymentProcessRequest p WHERE LEN(p.Token) < 20 AND p.TransactionDate = CONVERT(DATE, GETDATE(), 101)
+				SELECT 'MAJOR PROBLEM - Closed BU',* FROM #Final b WHERE txtBusinessUnitID IN (2,205, 54)
 
 
-	END
+				SELECT 'Suspension Not Started Issue', *
+						FROM #Final b
+						WHERE txType = 'Payment'
+							AND SuspensionStart <= @Val_BillDate 
+							AND SuspensionEnd > @VAL_BillDate
+							AND AgreementStatus != 'Freeze'
+
+				SELECT 	'Suspension Not Ended Issue', *
+						FROM #Final b
+						WHERE txType = 'Payment'
+							AND SuspensionEnd < @VAL_BillDate
+							AND AgreementStatus = 'Freeze'
+			END
 
 
-/******* SCRAP YARD **************
-
-SELECT *
-FROM Txtransaction 
-WHERE txInvoiceId = 17269915
-
-SELECT 'No PaymentProcessRequestID',txtBusinessUnitID,txtBusinessUnitName, COUNT(txtBusinessUnitID)
-FROM TSI_Tactical.dbo.Staging_WhatBilled_DEC b 
-WHERE [MOSOPay-Transaction] IS NULL 
-		AND txtype = 'Payment' 
-		AND Description not like '%Transfer%'
-GROUP BY txtBusinessUnitID,txtBusinessUnitName
-ORDER BY 4 DESC
-
-		SELECT DISTINCT txtBusinessUnitID, bu.name
-		FROM TSI_Tactical.dbo.Staging_WhatBilled_DEC b 
-		INNER JOIN dbo.BusinessUnit bu ON bu.BusinessUnitID = b.txtBusinessUnitID
-
-		SELECT DISTINCT b.Name
-				, bu.txtBusinessUnitID
-		FROM BusinessUnit b
-		LEFT JOIN TSI_Tactical.dbo.Staging_WhatBilled_DEC bu ON bu.txtbusinessUnitID = b.BUsinessUnitID AND bu.txtBusinessUnitID IN (12,13,15,16,17,19,20,21,23,24,25,26,28,29,30,31,32,33,34,38,43,53,54,55,56,59,60,61,62,63,69,70,71,72,73,74,75,76,77,79,80,81,83,84,85,86,93,94,95,96,98,99,105,106,107,110,112,118,120,128,129,130,131,135,138,142,143,144,146,148,149,150,151,152,154,155,156,158,159,160,161,162,163,164,165,166,167,168,169,174,175,179,181,182,184,193,202,203,204,205,206,207,208,227,228,229,230,231,232,235,236,237,238)
-		WHERE b.BusinessUnitID IN (12,13,15,16,17,19,20,21,23,24,25,26,28,29,30,31,32,33,34,38,43,53,54,55,56,59,60,61,62,63,69,70,71,72,73,74,75,76,77,79,80,81,83,84,85,86,93,94,95,96,98,99,105,106,107,110,112,118,120,128,129,130,131,135,138,142,143,144,146,148,149,150,151,152,154,155,156,158,159,160,161,162,163,164,165,166,167,168,169,174,175,179,181,182,184,193,202,203,204,205,206,207,208,227,228,229,230,231,232,235,236,237,238)	
-			AND bu.txtBusinessUnitID IS NULL
-
-*******/
-/*
-
-SELECT *
-DELETE
-FROM PaymentProcessRequest 
-WHERE PaymentProcessRequestID IN (7001082,7001076,7001102,7001094)
-
-*/*/
+END
