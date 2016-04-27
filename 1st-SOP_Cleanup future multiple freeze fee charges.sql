@@ -1,4 +1,4 @@
-declare @WITH_UPDATE int = 0;
+declare @WITH_UPDATE int = 1;
 
 if (object_id('tempdb..#MultiMAISRI') is not null) drop table #MultiMAISRI;
 if (object_id('tempdb..#MAISRItoDelete') is not null) drop table #MAISRItoDelete;
