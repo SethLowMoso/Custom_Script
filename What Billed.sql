@@ -21,8 +21,8 @@ SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
 	declare @BillingStartDate date;
 	declare @BillingEndDate datetime;
 
-	SET @OriginaBilllingDate = '5/1/2016'--CONVERT(DATE, GETDATE(), 101)--'9/4/2015'
-	SET @BillingStartDate = '5/1/2016'--CONVERT(DATE, GETDATE(), 101)--'9/4/2015'--
+	SET @OriginaBilllingDate = '4/30/2016'--CONVERT(DATE, GETDATE(), 101)--'9/4/2015'
+	SET @BillingStartDate = '4/30/2016'--CONVERT(DATE, GETDATE(), 101)--'9/4/2015'--
 	SET @BillingEndDate = DATEADD(ss,-1,CONVERT(DATETIME,DATEADD(DAY,1,CONVERT(DATE,GETDATE(),101))))--'9/4/2015 23:59:59'--
 
 
@@ -73,8 +73,9 @@ SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
 			inner join dbo.BusinessUnit bu (nolock) on txt.TargetBusinessUnitId = bu.BusinessUnitId
 			inner join dbo.StatusMap sm (nolock) on sm.StatusId = ma.[Status]
 				and sm.StatusMapType = 5
-		where
-			txt.TargetDate >= @BillingStartDate and txt.TargetDate < @BillingEndDate  -- limit to date range
+		where 1=1
+			and txt.TargetDate >= @BillingStartDate 
+			and txt.TargetDate < @BillingEndDate  -- limit to date range
 			and isnull(ma.FromExternal,0) = 0 -- ignore external agreements
 			and ua.ServiceOnly = 1 -- user account limited to servce accounts used by MTP
 	--		and txt.Amount != 0  -- ignore $0 transactions (for now)
@@ -443,7 +444,7 @@ SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
 
 SELECT * 
 FROM #Final
-WHERE txtBusinessUnitId IN (108,161)
+--WHERE txtBusinessUnitId IN (108,161)
 
 DECLARE @BillingValidation INT = 1,
 		@DevCore BIT = 0,
@@ -502,7 +503,7 @@ IF(@BillingValidation = 1)
 							AND TxType = 'Payment'
 							AND Description LIKE '%Sponsor%'
 
-				DECLARE @VAL_BillDate DATE = CONVERT(DATE,GETDATE(),101);
+				--DECLARE @VAL_BillDate DATE = CONVERT(DATE,GETDATE(),101);
 
 
 				SELECT 'Billing Date Not Today',* 
@@ -530,7 +531,7 @@ IF(@BillingValidation = 1)
 				SELECT 'MAJOR PROBLEM - Closed BU',* FROM #Final b WHERE txtBusinessUnitID IN (2,205, 54)
 
 
-				DECLARE @VAL_BillDate DATE = CONVERT(DATE,GETDATE(),101);
+				--DECLARE @VAL_BillDate DATE = CONVERT(DATE,GETDATE(),101);
 
 
 				SELECT 'Suspension Not Started Issue', *
