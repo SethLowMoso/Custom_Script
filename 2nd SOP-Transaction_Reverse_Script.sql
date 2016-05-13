@@ -104,7 +104,7 @@ LEFT JOIN Agreement a (NOLOCK) ON  a.AgreementID = m.AgreementId
 				, 'EDT' AS TargetDate_ZoneFormat
 				, ISNULL(p.PartyRoleID, cs.PartyRoleId) AS PartyRoleID
 				, -1 AS WorkUnitID 
-				, 0 AS IsReversal
+				, 1 AS IsReversal
 				, 132 AS TenderTypeID 
 				, NULL AS VoidReasonID
 				, ISNULL(p.ClientAccountId, cs.ClientAccountID) AS ClientAccountID
