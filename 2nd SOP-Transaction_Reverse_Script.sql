@@ -8,11 +8,12 @@ Purpose: This was designed to reverse a payment  and then all transactions on a 
 */
 
 
-DECLARE @Update INT = 0,
+DECLARE @Update INT = 1,
 		@MemberID VARCHAR(10) = NULL,
-		@Validate INT = 1,
-		@TxInvoiceID INT = null
-
+		@Validate INT = 0,
+		@TxInvoiceID INT = null,
+		@date DATE = '5/1/2016'
+		
 
 		;
 
@@ -128,13 +129,13 @@ LEFT JOIN Agreement a (NOLOCK) ON  a.AgreementID = m.AgreementId
 
 
 
-IF(@Update = 1)
-	BEGIN
-		-->>> INSERT Payment	
-		INSERT INTO TxPayment
-		SELECT NEWID() AS ObjectID, *
-		FROM #Temp
-	END
+--IF(@Update = 1)
+--	BEGIN
+--		-->>> INSERT Payment	
+--		--INSERT INTO TxPayment
+--		--SELECT NEWID() AS ObjectID, *
+--		--FROM #Temp
+--	END
 
 
 
@@ -176,7 +177,7 @@ IF(@Update = 1)
 		LEFT JOIN TxPayment p (NOLOCK) ON p.Comments = CAST(t.ItemID AS varchar(20)) ---THIS WILL NEED TO GET CHANGED TO INNER PRIOR TO BEING SUBMITTED
 		LEFT JOIN TXTransaction t2 (NOLOCK) ON t2.ItemID = t.ItemID AND t2.LinkTypeId = 17
 		WHERE 1=1
-			AND CONVERT(DATE,t.TargetDate,101) = '3/1/2016'
+			AND CONVERT(DATE,t.TargetDate,101) = @Date
 			AND t.ItemID IS NOT NULL
 			AND t2.TxTransactionID IS NULL -->>> This null excludes credit transfers
 			AND IIF(@TxInvoiceID IS NULL, f.TxInvoiceID, @TxInvoiceID) = f.TxInvoiceID
@@ -232,55 +233,56 @@ IF (@Update = 1)
 	END
 
 
+-->> THIS IS COMMENTED FOR A 1 TIME RUN.  I need to insert the payment transactions in addition to this.
+	--	IF(Object_ID('tempdb..#RemainingTransactions') IS NOT NULL) DROP TABLE #RemainingTransactions;
 
-		IF(Object_ID('tempdb..#RemainingTransactions') IS NOT NULL) DROP TABLE #RemainingTransactions;
 
+	----->>> TRANSACTION INSERT <<<---
 
-	--->>> TRANSACTION INSERT <<<---
-
-		SELECT 
-				NEWID() AS ObjectId
-				, t.TxInvoiceId
-				, GETDATE() AS TargetDate
-				, t.TxTypeId
-				, t.Quantity
-				, CONCAT(t.Description, ' - Reversed due to Freeze Fee failure') AS Description
-				, t.UnitPrice
-				, t.Amount
-				, t.Comments
-				, t.TargetDate_ZoneFormat
-				, (SELECT MAX(DISPLAYORDER) + 1 FROM TxTransaction a WHERE a.TxInvoiceID = f.TxInvoiceId) AS DisplayOrder
-				, t.GroupId
-				, t.ItemId
-				, -1 AS WorkUnitId
-				, IIF(t.IsAccountingCredit = 0, 1, 0) AS IsAccountCredit
-				, t.PriceId
-				, t.BundleId
-				, t.BundleGroupId
-				, t.TargetBusinessUnitId
-				, t.PriceIdType
-				, t.LinkTypeId
-				, t.LinkId
-				, GETUTCDATE() AS TargetDate_UTC
-				, t.SalesPersonPartyRoleId
-				, t.RecurringDiscount
-				, t.PIFInstallmentDiscount
-		INTO #RemainingTransactions
-		FROM #Staging f (NOLOCK)
-		INNER JOIN TxTransaction t (NOLOCK) ON t.TxInvoiceID = f.TxInvoiceID
-		WHERE 1=1
-			--AND t.txInvoiceId = 18694286
-			AND t.TxtypeID NOT IN (100,4)
-			AND IIF(@TxInvoiceID IS NULL, f.TxInvoiceID, @TxInvoiceID) = f.TxInvoiceID
+	--	SELECT 
+	--			NEWID() AS ObjectId
+	--			, t.TxInvoiceId
+	--			, GETDATE() AS TargetDate
+	--			, t.TxTypeId
+	--			, t.Quantity
+	--			, CONCAT(t.Description, ' - Reversed due to Freeze Fee failure') AS Description
+	--			, t.UnitPrice
+	--			, t.Amount
+	--			, t.Comments
+	--			, t.TargetDate_ZoneFormat
+	--			, (SELECT MAX(DISPLAYORDER) + 1 FROM TxTransaction a WHERE a.TxInvoiceID = f.TxInvoiceId) AS DisplayOrder
+	--			, t.GroupId
+	--			, t.ItemId
+	--			, -1 AS WorkUnitId
+	--			, IIF(t.IsAccountingCredit = 0, 1, 0) AS IsAccountCredit
+	--			, t.PriceId
+	--			, t.BundleId
+	--			, t.BundleGroupId
+	--			, t.TargetBusinessUnitId
+	--			, t.PriceIdType
+	--			, t.LinkTypeId
+	--			, t.LinkId
+	--			, GETUTCDATE() AS TargetDate_UTC
+	--			, t.SalesPersonPartyRoleId
+	--			, t.RecurringDiscount
+	--			, t.PIFInstallmentDiscount
+	--	INTO #RemainingTransactions
+	--	FROM #Staging f (NOLOCK)
+	--	INNER JOIN TxTransaction t (NOLOCK) ON t.TxInvoiceID = f.TxInvoiceID
+	--	WHERE 1=1
+	--		--AND t.txInvoiceId = 18694286
+	--		AND t.TxtypeID NOT IN (100,4)
+	--		AND IIF(@TxInvoiceID IS NULL, f.TxInvoiceID, @TxInvoiceID) = f.TxInvoiceID
 
 
 IF (@Update = 1)
 	BEGIN
+		SELECT 1
 -->>> Reverse Remaining Transactions
-		INSERT INTO dbo.TxTransaction
-			(ObjectId, TxInvoiceId, TargetDate, TxTypeId, Quantity, Description, UnitPrice, Amount, Comments, TargetDate_ZoneFormat, DisplayOrder, GroupId, ItemId, WorkUnitId, IsAccountingCredit, PriceId, BundleId, BundleGroupId, TargetBusinessUnitId, PriceIdType, LinkTypeId, LinkId, TargetDate_UTC, SalesPersonPartyRoleId, RecurringDiscount, PIFInstallmentDiscount)
-		SELECT *
-		FROM #RemainingTransactions
+		--INSERT INTO dbo.TxTransaction
+		--	(ObjectId, TxInvoiceId, TargetDate, TxTypeId, Quantity, Description, UnitPrice, Amount, Comments, TargetDate_ZoneFormat, DisplayOrder, GroupId, ItemId, WorkUnitId, IsAccountingCredit, PriceId, BundleId, BundleGroupId, TargetBusinessUnitId, PriceIdType, LinkTypeId, LinkId, TargetDate_UTC, SalesPersonPartyRoleId, RecurringDiscount, PIFInstallmentDiscount)
+		--SELECT *
+		--FROM #RemainingTransactions
 
 	END
 
