@@ -8,7 +8,7 @@ SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
 
 --CREATE PROCEDURE [dbo].[sp_TSI_WhatBilled]
 --AS
---BEGIN
+--BEGIN`
 
 	--TRUNCATE TABLE TSI_Tactical.dbo.Staging_WhatBilled
 
@@ -21,8 +21,8 @@ SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
 	declare @BillingStartDate date;
 	declare @BillingEndDate datetime;
 
-	SET @OriginaBilllingDate = '4/30/2016'--CONVERT(DATE, GETDATE(), 101)--'9/4/2015'
-	SET @BillingStartDate = '4/30/2016'--CONVERT(DATE, GETDATE(), 101)--'9/4/2015'--
+	SET @OriginaBilllingDate = '6/1/2016'--CONVERT(DATE, GETDATE(), 101)--'9/4/2015'
+	SET @BillingStartDate = '6/1/2016'--CONVERT(DATE, GETDATE(), 101)--'9/4/2015'--
 	SET @BillingEndDate = DATEADD(ss,-1,CONVERT(DATETIME,DATEADD(DAY,1,CONVERT(DATE,GETDATE(),101))))--'9/4/2015 23:59:59'--
 
 
@@ -473,10 +473,10 @@ IF(@BillingValidation = 1)
 
 		IF(@StagingTable = 1)
 			BEGIN
-				IF(OBJECT_ID('TSI_Tactical.dbo.Storage_WhatBilled_May') IS NOT NULL )DROP TABLE TSI_Tactical.dbo.Storage_WhatBilled_May
+				IF(OBJECT_ID('TSI_Tactical.dbo.Storage_WhatBilled_June') IS NOT NULL )DROP TABLE TSI_Tactical.dbo.Storage_WhatBilled_June
 				
 				SELECT  *
-				INTO TSI_Tactical.dbo.Storage_WhatBilled_May
+				INTO TSI_Tactical.dbo.Storage_WhatBilled_June
 				FROM #Final f
 			END
 
@@ -509,8 +509,8 @@ IF(@BillingValidation = 1)
 				SELECT 'Billing Date Not Today',* 
 						FROM #Final b 
 						WHERE txtype = 'sale' 
-							AND mairBillDate != @VAL_BillDate 
-							AND mairBillDate != DATEADD(DAY,-1,@VAL_BillDate)
+							AND mairBillDate != '6/1/2016'--@VAL_BillDate 
+							AND mairBillDate != DATEADD(DAY,-1,'6/1/2016')--@VAL_BillDate)
 
 				--Expected 0
 				SELECT 'Payment Due Date Out of Alignment',* 
@@ -537,15 +537,15 @@ IF(@BillingValidation = 1)
 				SELECT 'Suspension Not Started Issue', *
 						FROM #Final b
 						WHERE txType = 'Payment'
-							AND SuspensionStart <= @Val_BillDate 
-							AND SuspensionEnd > @VAL_BillDate
+							AND CONVERT(DATE,SuspensionStart,101) <= '5/1/2016'--@Val_BillDate 
+							AND CONVERT(DATE,SuspensionEnd,101) > '5/1/2016'--@VAL_BillDate
 							AND AgreementStatus != 'Freeze'
 							AND [MosoPay-Transaction] IS NOT NULL
 
 				SELECT 	'Suspension Not Ended Issue', *
 						FROM #Final b
 						WHERE txType = 'Payment'
-							AND SuspensionEnd < @VAL_BillDate
+							AND CONVERT(DATE,SuspensionEnd) < '5/1/2016'--@VAL_BillDate
 							AND AgreementStatus = 'Freeze'
 
 

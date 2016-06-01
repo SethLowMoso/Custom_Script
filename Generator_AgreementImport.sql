@@ -23,14 +23,18 @@ SELECT ROW_NUMBER() over (partition by na.MemberID ORDER BY na.MemberID ASC) as 
 		, *
 INTO #TargetList
 --SELECT *
-FROM  [TSI_tactical].[dbo].[Storage_NS135110_NewburyAgreementMove] na
+FROM  [TSI_tactical].[dbo].[Storage_NS132542_SoHo_AgreementImport] na
 ORDER BY MEMBERID, INSTALLMENTPERPETUALREF
+
+DECLARE @BUCode INT = ( SELECT Code FROM BusinessUnit WHERE BusinessUnitID = (SELECT DISTINCT MoveTo FROM TSI_Tactical.dbo.[Storage_NS132542_SoHo_AgreementImport]))
+
+
 
 SELECT --ROW_NUMBER() over (partition by na.MemberID ORDER BY na.MemberID ASC) as  ROW_Num,
 		na.MEMBERID AS [OwnerId] --MemberID
       ,na.AGREEMENTIMPORTREF AS [MappingId] --Agreement ImportRef --HARDCODE REMOVED
       ,CONCAT(na.MEMBERID,'NA',na.Row_Num) AS [AgreementReferenceId] -- Composite ID used for mapping between staging tables.
-      , 1197 AS  [FacilityCode] -- BusinessUnitCode -- HARDCODE REMOVED
+      ,@BUCode AS  [FacilityCode] -- BusinessUnitCode -- HARDCODE REMOVED
       ,'' AS [AccountId] -- Responsible Party MemberID
       ,GETDATE() AS [StartDate] -- When did the agreement start --THEY REQUESTED A SPECIFIC STARTDATE
       ,0 AS [Balance] -- Any balance owed
@@ -119,7 +123,10 @@ FROM #PaySources
 IF(OBJECT_ID('tempdb..#AgreementItemPaysourcesToImport') IS NOT NULL) DROP TABLE #AgreementItemPaysourcesToImport
 
 SELECT DISTINCT ai.[ItemReferenceId] --[ItemReferenceId] from AgreementItemsToImport
-      ,a.OwnerId AS [PaySourceReferenceId] -- Active Client Account of Member
+      ,CASE 
+		WHEN c.ClientAccount IS NULL THEN -1
+		ELSE a.OwnerID
+		END AS [PaySourceReferenceId] -- Active Client Account of Member
       ,1 AS [IsPercentage] -- 1 Is the amount allocated a percentage total
       ,1 AS [Amount] -- Amount, how much is going on this paysource, in these cases the value will always be 1
       ,ai.[BillingScheduleRefId] AS [MappingId] -- BillingSchedule.ImportRef
@@ -129,54 +136,36 @@ INTO #AgreementItemPaysourcesToImport
   LEFT JOIN #PaySources c ON c.OwnerId = a.OwnerID
 
 
+SELECT *
+FROM  [TSI_tactical].[dbo].[Storage_NS132542_SoHo_AgreementImport] na
+
 
 --IMPORTSERVER.Stage_TSI_HVLP.dbo.[TSI_AgreementToImport$]
-
 --SELECT COUNT(*) 
+--INSERT INTO [ImportServer].[Stage_TSI_HVLP].[dbo].[AgreementToImport]
 SELECT *
---INTO importserver.Stage_TSI_HVLP.[dbo].[TSI_AgreementToImport$]
 FROM #AgreementToImport
 
+
+--INSERT INTO [ImportServer].[Stage_TSI_HVLP].[dbo].[AgreementItemsToImport]
 --SELECT COUNT(*) 
-SELECT *
+SELECT * 
 FROM #AgreementItemsToImport
 
 --SELECT COUNT(*) 
-SELECT *
+SELECT * 
 FROM #PaySources p
-WHERE p.ownerID IN (614897)
-
 
 --SELECT COUNT(*) 
-SELECT *
+SELECT * 
 FROM #ForObj
 
---SELECT COUNT(*) 
+--SELECT COUNT(*)
+--DROP TABLE ImportServer.Stage_TSI_HVLP.dbo.AgreementItemPaysourcesToImport 
+--INSERT INTO [ImportServer].[Stage_TSI_HVLP].[dbo].[AgreementItemPaysourcesToImport]
 SELECT *
 FROM #AgreementItemPaysourcesToImport
-
-SELECT *
-FROM AgreementToImport
-
-SELECT *
-FROM AgreementItemsToImport
-
-SELECT *
-FROM ForeignObjects  fo
-WHERE fo.ForeignId = '614897NA1'
-WHERE fo.ForeignId = '614897'
-
-SELECT *
-FROM ClientAccount ca
-WHERE ca.ClientAccountId = 199140
-
-
---SELECT i.ItemReferenceId
---		, COUNT(i.ItemReferenceID) 
---FROM #AgreementItemPaysourcesToImport i
---GROUP BY i.ItemReferenceId 
---ORDER BY 2 DESC
-
+--WHERE PaySourceReferenceId = -1
 
 /*
 DROP TABLE #AgreementToImport
