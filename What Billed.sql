@@ -442,8 +442,7 @@ SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
 			, convert(date,sps.BeginTime,101) 
 			, convert(date,sps.EndTime,101) 
 
-SELECT * 
-FROM #Final
+
 --WHERE txtBusinessUnitId IN (108,161)
 
 DECLARE @BillingValidation INT = 1,
@@ -457,19 +456,55 @@ DECLARE @BillingValidation INT = 1,
 		--->>> BEGIN VALIDATION SCRIPTs
 IF(@BillingValidation = 1)
 	BEGIN
-		SELECT COUNT(*) AS RecordCount FROM #Final
-		SELECT 'SALE' AS [Type],*  FROM #Final WHERE txType = 'Sale'
-		SELECT 'PAYMENT' AS [Type],*  FROM #Final WHERE txType = 'Payment'
+		--SELECT COUNT(*) AS RecordCount FROM #Final
+		--SELECT 'SALE' AS [Type],*  FROM #Final WHERE txType = 'Sale'
+		--SELECT 'PAYMENT' AS [Type],*  FROM #Final WHERE txType = 'Payment'
 
 		DECLARE @SalesAmount INT = (SELECT SUM(SaleAmount) AS SumOfSales FROM #Final WHERE TxType = 'Sale')
 				, @TaxAmmount INT = (SELECT SUM(TaxAmount) AS SumOfTax FROM #Final WHERE TxType = 'Tax')
 				, @PaymentAmount INT = (SELECT SUM(PaymentAmount) AS SumOfPayments FROM #Final WHERE TxType = 'Payment')
-		SELECT @SalesAmount AS SalesAmount
-				, @TaxAmmount AS TaxAmount
-				, @SalesAmount + @TaxAmmount AS TotalTransaction
-				, @PaymentAmount AS PaymentAmmount
+				, @PreviousSaleAMT INT = (SELECT SUM(SaleAmount)   FROM [TSI_tactical].[dbo].[Storage_WhatBilled_May]WHERE TxType = 'Sale')
 
-				 
+
+		IF(OBJECT_ID('tempdb..#Status') IS NOT NULL)
+			BEGIN
+				INSERT INTO #Status
+				SELECT GETDATE() AS TimeStamp
+						, @SalesAmount AS SalesAmount
+						, @TaxAmmount AS TaxAmount
+						, @SalesAmount + @TaxAmmount AS TotalTransaction
+						, @PaymentAmount AS PaymentAmmount
+						, CAST((@PreviousSaleAMT - @SalesAmount) AS MONEY) AS SalesLeftEST
+			END
+		IF(OBJECT_ID('tempdb..#Status') IS NULL)
+			BEGIN
+				CREATE TABLE #Status
+					([TimeStamp] DATETIME
+						, SalesAmount INT
+						, TaxAmount INT
+						, TotalTransaction INT
+						, PaymentAmmount INT
+						, SalesLeftEST INT
+					)
+
+				INSERT INTO #Status
+				SELECT GETDATE() AS TimeStamp
+						, @SalesAmount AS SalesAmount
+						, @TaxAmmount AS TaxAmount
+						, @SalesAmount + @TaxAmmount AS TotalTransaction
+						, @PaymentAmount AS PaymentAmmount
+						, CAST((@PreviousSaleAMT - @SalesAmount) AS MONEY) AS SalesLeftEST
+				
+			END
+
+		SELECT *
+		FROM #Status
+		ORDER BY [TimeStamp] DESC
+
+
+		--SELECT * 
+		--FROM #Final f
+--		WHERE f.txtBusinessUnitId IN (17,19,26,35,37,42,53,60,62,69,71,76,85,94,101,110,112,121,144,146,151,160,162,169,176,178,185,203,228,235,237,11,20,29,34,43,45,59,61,70,77,79,84,86,93,95,102,109,118,120,143,145,152,159,161,168,170,179,184,193,202,204,229,236,238,13,15,16,30,31,32,33,47,48,49,50,63,80,81,83,97,98,99,100,130,132,147,148,149,150,164,165,166,167,180,181,182,230,231,232,21,23,24,25,39,41,55,56,58,72,74,75,105,106,107,108,122,138,139,142,156,158,174,175,206)				 
 
 		IF(@StagingTable = 1)
 			BEGIN
@@ -477,7 +512,20 @@ IF(@BillingValidation = 1)
 				
 				SELECT  *
 				INTO TSI_Tactical.dbo.Storage_WhatBilled_June
+				FROM #Final
+
+				SELECT 'SALE' AS Type ,*
 				FROM #Final f
+				WHERE 1=1
+					--and f.txtBusinessUnitId IN (17,19,26,35,37,42,53,60,62,69,71,76,85,94,101,110,112,121,144,146,151,160,162,169,176,178,185,203,228,235,237,11,20,29,34,43,45,59,61,70,77,79,84,86,93,95,102,109,118,120,143,145,152,159,161,168,170,179,184,193,202,204,229,236,238,13,15,16,30,31,32,33,47,48,49,50,63,80,81,83,97,98,99,100,130,132,147,148,149,150,164,165,166,167,180,181,182,230,231,232,21,23,24,25,39,41,55,56,58,72,74,75,105,106,107,108,122,138,139,142,156,158,174,175,206)				 
+					AND f.txtype = 'Sale'
+
+
+				SELECT 'Payment' AS Type ,*
+				FROM #Final f
+				WHERE 1=1
+					--and f.txtBusinessUnitId IN (17,19,26,35,37,42,53,60,62,69,71,76,85,94,101,110,112,121,144,146,151,160,162,169,176,178,185,203,228,235,237,11,20,29,34,43,45,59,61,70,77,79,84,86,93,95,102,109,118,120,143,145,152,159,161,168,170,179,184,193,202,204,229,236,238,13,15,16,30,31,32,33,47,48,49,50,63,80,81,83,97,98,99,100,130,132,147,148,149,150,164,165,166,167,180,181,182,230,231,232,21,23,24,25,39,41,55,56,58,72,74,75,105,106,107,108,122,138,139,142,156,158,174,175,206)				 
+					AND f.txtype = 'Payment'
 			END
 
 

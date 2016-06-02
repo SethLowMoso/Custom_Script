@@ -22,18 +22,19 @@ from
  inner join dbo.BusinessUnit bu on ppb.BusinessUnitId = bu.BusinessUnitId
 where 1=1
  --ppb.RequestSentTime is null
- and ppb.CreationTime >= '2/1/2016'
+ and ppb.CreationTime >= '6/1/2016'
  and isnull(txp.LinkTypeId,0) != 2 -- filter out cancellations
 group by
  ppb.BusinessUnitId
  ,bu.Name
 having 
- max(ppb.CreationTime) <= dateadd(minute,-45,getdate())
+ max(ppb.CreationTime) <= dateadd(minute,-120,getdate())
 order by
  bu.Name
 
  /**********************************************************************
  **********************************************************************/
 
- SELECT CONCAT('D:\MTP\TSI\Moso.TaskProcessor.exe /tenantIds 204 /StatusUpdate /businessUnitIds ', BusinessUnitID)
+ SELECT CONCAT('D:\MTP\TSI\Moso.TaskProcessor.exe /tenantIds 204 /sendbatch /businessUnitIds ', BusinessUnitID)
  FROM #Storage1
+
