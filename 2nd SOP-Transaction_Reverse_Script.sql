@@ -8,11 +8,11 @@ Purpose: This was designed to reverse a payment  and then all transactions on a 
 */
 
 
-DECLARE @Update INT = 1,
+DECLARE @Update INT = 0,
 		@MemberID VARCHAR(10) = NULL,
 		@Validate INT = 0,
 		@TxInvoiceID INT = null,
-		@date DATE = '5/1/2016'
+		@date DATE = '6/1/2016'
 		
 
 		;
@@ -27,6 +27,28 @@ IF(Object_ID('tempdb..#TransactionStaging') IS NOT NULL) DROP TABLE #Transaction
 IF(Object_ID('tempdb..#Staging') IS NOT NULL) DROP TABLE #Staging;
 IF(Object_ID('tempdb..#Exclusion') IS NOT NULL) DROP TABLE #Exclusion;
 
+IF(Object_ID('tempdb..#Reverse') IS NOT NULL) DROP TABLE #Reverse;
+IF(Object_ID('tempdb..#NontxPayment') IS NOT NULL) DROP TABLE #NontxPayment;
+
+
+SELECT *
+INTO #Reverse
+FROM  TSI_Tactical.[dbo].[Storage_JUNE_Transactions_To_Reverse] r (NOLOCK) 
+WHERE r.TxPaymentId != 'NULL'
+
+SELECT *
+INTO #NontxPayment
+FROM TSI_Tactical.[dbo].[Storage_JUNE_Transactions_To_Reverse]
+
+
+--SELECT t.*
+UPDATE r SET r.TxPaymentID = t.ItemId
+FROM #NontxPayment r (NOLOCK) 
+INNER JOIN dbo.TxTransaction t ON t.TxInvoiceId = r.TxInvoiceId 
+WHERE TxPaymentID = 'NULL'
+	AND amount != 0 
+	AND txtypeid = 4
+	
 
 SELECT	i.PartyRoleID
 		, p.RoleID AS MemberID
@@ -39,8 +61,10 @@ SELECT	i.PartyRoleID
 		, mr.MemberAgreementId
 		, a.Name AS Agreement
 INTO #Staging
---SELECT *
-FROM TSI_Tactical.dbo.Storage_May_PaymentProcessRequestData_Remmoval r (NOLOCK) 
+--	SELECT *
+-- SELECT r.TxPaymentID
+--FROM #Reverse r 
+FROM #NonTxPayment r 
 INNER JOIN TxTransaction t (NOLOCK) ON t.ItemId = r.TxPaymentID AND t.txtypeId = 4
 INNER JOIN TxInvoice i (NOLOCK) ON i.TxInvoiceId = t.TxInvoiceID 
 INNER JOIN PartyRole p (NOLOCK) ON p.PartyRoleId = i.PartyRoleID
@@ -48,19 +72,10 @@ INNER JOIN PartyPropertiesReportingView pv (NOLOCK) ON pv.PartyId= p.PartyID
 LEFT JOIN MemberAgreementInvoiceRequest mr (NOLOCK) ON mr.TxInvoiceId = i.TxInvoiceID
 LEFT JOIN MemberAgreement m (NOLOCK) ON mr.MemberAgreementId = m.MemberAgreementId
 LEFT JOIN Agreement a (NOLOCK) ON  a.AgreementID = m.AgreementId
-
---SELECT *
---UPDATE s SET s.TxPaymentId = NULL
---FROM TSI_Tactical.dbo.Storage_March_SuspensionReversal s
---WHERE TxPaymentID = 'NULL'
-
-/*
-2732817
-8398774
-8421290
-2251915
-1188267
-*/	
+WHERE 1=1
+	AND r.TxPaymentID IS NOT NULL
+--	AND r.TxPaymentID = 'NULL' OR r.Txpaymentid is null
+	
 
 
 			SELECT MemberID
@@ -106,7 +121,7 @@ LEFT JOIN Agreement a (NOLOCK) ON  a.AgreementID = m.AgreementId
 				, ISNULL(p.PartyRoleID, cs.PartyRoleId) AS PartyRoleID
 				, -1 AS WorkUnitID 
 				, 1 AS IsReversal
-				, 132 AS TenderTypeID 
+				, 137 AS TenderTypeID 
 				, NULL AS VoidReasonID
 				, ISNULL(p.ClientAccountId, cs.ClientAccountID) AS ClientAccountID
 				, NULL AS LinkTypeID
@@ -127,7 +142,7 @@ LEFT JOIN Agreement a (NOLOCK) ON  a.AgreementID = m.AgreementId
 			AND IIF(@TxInvoiceID IS NULL, f.TxInvoiceID, @TxInvoiceID) = f.TxInvoiceID
 			AND e.MemberID IS NULL
 
-
+--SELECT * FROM TenderType where name like '%Dues%'-- tendertypeid = 132
 
 --IF(@Update = 1)
 --	BEGIN
@@ -234,55 +249,55 @@ IF (@Update = 1)
 
 
 -->> THIS IS COMMENTED FOR A 1 TIME RUN.  I need to insert the payment transactions in addition to this.
-	--	IF(Object_ID('tempdb..#RemainingTransactions') IS NOT NULL) DROP TABLE #RemainingTransactions;
+		IF(Object_ID('tempdb..#RemainingTransactions') IS NOT NULL) DROP TABLE #RemainingTransactions;
 
 
-	----->>> TRANSACTION INSERT <<<---
+	--->>> TRANSACTION INSERT <<<---
 
-	--	SELECT 
-	--			NEWID() AS ObjectId
-	--			, t.TxInvoiceId
-	--			, GETDATE() AS TargetDate
-	--			, t.TxTypeId
-	--			, t.Quantity
-	--			, CONCAT(t.Description, ' - Reversed due to Freeze Fee failure') AS Description
-	--			, t.UnitPrice
-	--			, t.Amount
-	--			, t.Comments
-	--			, t.TargetDate_ZoneFormat
-	--			, (SELECT MAX(DISPLAYORDER) + 1 FROM TxTransaction a WHERE a.TxInvoiceID = f.TxInvoiceId) AS DisplayOrder
-	--			, t.GroupId
-	--			, t.ItemId
-	--			, -1 AS WorkUnitId
-	--			, IIF(t.IsAccountingCredit = 0, 1, 0) AS IsAccountCredit
-	--			, t.PriceId
-	--			, t.BundleId
-	--			, t.BundleGroupId
-	--			, t.TargetBusinessUnitId
-	--			, t.PriceIdType
-	--			, t.LinkTypeId
-	--			, t.LinkId
-	--			, GETUTCDATE() AS TargetDate_UTC
-	--			, t.SalesPersonPartyRoleId
-	--			, t.RecurringDiscount
-	--			, t.PIFInstallmentDiscount
-	--	INTO #RemainingTransactions
-	--	FROM #Staging f (NOLOCK)
-	--	INNER JOIN TxTransaction t (NOLOCK) ON t.TxInvoiceID = f.TxInvoiceID
-	--	WHERE 1=1
-	--		--AND t.txInvoiceId = 18694286
-	--		AND t.TxtypeID NOT IN (100,4)
-	--		AND IIF(@TxInvoiceID IS NULL, f.TxInvoiceID, @TxInvoiceID) = f.TxInvoiceID
+		SELECT 
+				NEWID() AS ObjectId
+				, t.TxInvoiceId
+				, GETDATE() AS TargetDate
+				, t.TxTypeId
+				, t.Quantity
+				, CONCAT(t.Description, ' - Reversed due to Freeze Fee failure') AS Description
+				, t.UnitPrice
+				, t.Amount
+				, t.Comments
+				, t.TargetDate_ZoneFormat
+				, (SELECT MAX(DISPLAYORDER) + 1 FROM TxTransaction a WHERE a.TxInvoiceID = f.TxInvoiceId) AS DisplayOrder
+				, t.GroupId
+				, t.ItemId
+				, -1 AS WorkUnitId
+				, IIF(t.IsAccountingCredit = 0, 1, 0) AS IsAccountCredit
+				, t.PriceId
+				, t.BundleId
+				, t.BundleGroupId
+				, t.TargetBusinessUnitId
+				, t.PriceIdType
+				, t.LinkTypeId
+				, t.LinkId
+				, GETUTCDATE() AS TargetDate_UTC
+				, t.SalesPersonPartyRoleId
+				, t.RecurringDiscount
+				, t.PIFInstallmentDiscount
+		INTO #RemainingTransactions
+		FROM #Staging f (NOLOCK)
+		INNER JOIN TxTransaction t (NOLOCK) ON t.TxInvoiceID = f.TxInvoiceID
+		WHERE 1=1
+			--AND t.txInvoiceId = 18694286
+			AND t.TxtypeID NOT IN (100,4)
+			AND IIF(@TxInvoiceID IS NULL, f.TxInvoiceID, @TxInvoiceID) = f.TxInvoiceID
 
 
 IF (@Update = 1)
 	BEGIN
 		SELECT 1
 -->>> Reverse Remaining Transactions
-		--INSERT INTO dbo.TxTransaction
-		--	(ObjectId, TxInvoiceId, TargetDate, TxTypeId, Quantity, Description, UnitPrice, Amount, Comments, TargetDate_ZoneFormat, DisplayOrder, GroupId, ItemId, WorkUnitId, IsAccountingCredit, PriceId, BundleId, BundleGroupId, TargetBusinessUnitId, PriceIdType, LinkTypeId, LinkId, TargetDate_UTC, SalesPersonPartyRoleId, RecurringDiscount, PIFInstallmentDiscount)
-		--SELECT *
-		--FROM #RemainingTransactions
+		INSERT INTO dbo.TxTransaction
+			(ObjectId, TxInvoiceId, TargetDate, TxTypeId, Quantity, Description, UnitPrice, Amount, Comments, TargetDate_ZoneFormat, DisplayOrder, GroupId, ItemId, WorkUnitId, IsAccountingCredit, PriceId, BundleId, BundleGroupId, TargetBusinessUnitId, PriceIdType, LinkTypeId, LinkId, TargetDate_UTC, SalesPersonPartyRoleId, RecurringDiscount, PIFInstallmentDiscount)
+		SELECT *
+		FROM #RemainingTransactions
 
 	END
 
@@ -309,9 +324,9 @@ IF (@Update = 0)
 		--WHERE s.MemberID IN (SELECT MEMBERID FROM #Exclusion) 
 
 		
-		SELECT * FROM #Temp -->> New Payment
-		SELECT * FROM #TransactionStaging -->> Reversing Payment Transaction
-		SELECT * FROM #RemainingTransactions -->> Reversal of remaining transactions
+		SELECT 'ReversingPayment', * FROM #Temp -->> New Payment
+		SELECT 'ReversingTransaction',* FROM #TransactionStaging t -->> Reversing Payment Transaction
+		SELECT 'TransactionToPayoffOriginal', * FROM #RemainingTransactions -->> Reversal of remaining transactions
 	END
 
 

@@ -22,7 +22,7 @@ SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
 	declare @BillingEndDate datetime;
 
 	SET @OriginaBilllingDate = '6/1/2016'--CONVERT(DATE, GETDATE(), 101)--'9/4/2015'
-	SET @BillingStartDate = '6/1/2016'--CONVERT(DATE, GETDATE(), 101)--'9/4/2015'--
+	SET @BillingStartDate = '6/5/2016'--CONVERT(DATE, GETDATE(), 101)--'9/4/2015'--
 	SET @BillingEndDate = DATEADD(ss,-1,CONVERT(DATETIME,DATEADD(DAY,1,CONVERT(DATE,GETDATE(),101))))--'9/4/2015 23:59:59'--
 
 
@@ -444,12 +444,111 @@ SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
 			, convert(date,sps.EndTime,101) 
 
 
+SELECT SUM(SALEAMOUNT)
+FROM #final f
+WHERE  f.mairbilldate != '8/1/2015'
+	AND TxType = 'Sale'
+	AND SaleAmount != 0
+
+SELECT COUNT(*)
+FROM #final f
+WHERE  f.mairbilldate != '8/1/2015'
+	AND TxType = 'Sale'
+	AND SaleAmount != 0
+
+SELECT *
+FROM #final f
+WHERE  f.mairbilldate != '8/1/2015'
+	AND TxType = 'Sale'
+	AND SaleAmount != 0
+
+SELECT *
+FROM PaymentProcessRequest
+WHERE TransactionDate = '6/6/2016'
+
+WITH C AS (SELECT PaymentProcessRequestID AS [MOSOPAYTransactionCode], f.MemberID, t.TxInvoiceID, t.txtransactionid, p.TxPaymentId, pr.PaymentProcessRequestID, p.Amount, f.PaymentAmount
+			FROM TSI_Tactical.dbo.Storage_MOSOPAY_Atlas_RefundBug f
+			INNER JOIN TxTransaction t ON f.TxInvoiceID = t.TxInvoiceId AND t.TxTypeId = 4
+			INNER JOIN TxPayment p ON p.TxPaymentID = t.ItemId AND CONVERT(Date,p.TargetDate,101) = '6/6/2016'
+			INNER JOIN PaymentProcessrequest pr ON pr.TxPaymentID = p.TxPaymentID
+			--INNER JOIN PaymentProcessRequest pr ON p.TxPaymentID = 
+			WHERE 1=1
+				AND f.mairBilldate = '8/1/2015' 
+				AND ABS(p.amount) = abs(f.PaymentAmount)
+				and f.TxTransactionID = t.TxTransactionID
+			--ORDER BY PaymentAmount DESC
+			)
+SELECT SUM(TotalAmount)
+FROM PaymentProcessRequest p
+LEFT JOIN TSI_Tactical.dbo.Storage_MOSOPAY_Atlas_RefundBug r ON r.PaymentProcessRequestID = p.PaymentProcessRequestID
+WHERE TransactionDate = '6/6/2016'
+	AND r.MemberID IS NULL
 
 
---SELECT *
---FROM #Final 
+SELECT *
+FROM TSI_Tactical.[dbo].[Storage_MOSOPay_Transactions]
+
+SELECT SUM(PaymentAmount)
+FROM TSI_Tactical.dbo.Storage_MOSOPAY_Atlas_RefundBug
+
+SELECT  SUM(SaleAmount)
+FROM #final f
+WHERE  f.mairbilldate != '8/1/2015'--'6/6/2016'
+	AND Txtype = 'Sale'
+
+SELECT SUM(SaleAmount)
+FROM #final f
+WHERE  f.mairbilldate = '6/6/2016'
+
+--INTO TSI_tactical.dbo.
 
 
+SELECT *
+--INTO TSI_Tactical.dbo.Storage_MOSOPAY_Atlas_RefundBug
+FROM #Final 
+WHERE mairbilldate = '8/1/2015'
+
+
+
+SELECT *
+--INTO TSI_tactical.dbo.
+FROM #Final 
+WHERE mairbilldate = '8/1/2015'
+-- and memberid = 3893986
+ORDER BY PaymentAmount DESC
+
+
+SELECT PaymentProcessRequestID AS [MOSOPAYTransactionCode], f.MemberID, t.TxInvoiceID, t.txtransactionid, p.TxPaymentId, pr.PaymentProcessRequestID, p.Amount, f.PaymentAmount
+INTO #Staging_MOSOPAY
+FROM TSI_Tactical.dbo.Storage_MOSOPAY_Atlas_RefundBug f
+INNER JOIN TxTransaction t ON f.TxInvoiceID = t.TxInvoiceId AND t.TxTypeId = 4
+INNER JOIN TxPayment p ON p.TxPaymentID = t.ItemId AND CONVERT(Date,p.TargetDate,101) = '6/6/2016'
+INNER JOIN PaymentProcessrequest pr ON pr.TxPaymentID = p.TxPaymentID
+--INNER JOIN PaymentProcessRequest pr ON p.TxPaymentID = 
+WHERE 1=1
+	AND f.mairBilldate = '8/1/2015' 
+	AND ABS(p.amount) = abs(f.PaymentAmount)
+	and f.TxTransactionID = t.TxTransactionID
+ORDER BY PaymentAmount DESC
+
+
+SELECT *
+FROM Paymentprocessrequest  p
+WHERE  p.TransactionDate = '6/6/2016'
+
+SELECT t.*
+FROM TSI_Tactical.[dbo].[Storage_MOSOPay_Transactions] t
+INNER JOIN #Staging_MOSOPAY p ON p.MOSOPAYTransactionCode = t.[Trans Code]
+WHERE Status != 'Cancelled'
+
+
+SELECT *
+FROM TxPayment 
+WHERE TxPaymentId IN (23986710,23985700)
+
+SELECT* 
+FROM BusinessUnit 
+WHERE businessunitid  = 227
 
 DECLARE @BillingValidation INT = 0,
 		@DevCore BIT = 0,
