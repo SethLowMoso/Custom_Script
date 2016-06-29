@@ -8,10 +8,10 @@ Purpose: This was designed to reverse a payment  and then all transactions on a 
 */
 
 
-DECLARE @Update INT = 0,
+DECLARE @Update INT = 1,
 		@MemberID VARCHAR(10) = NULL,
 		@Validate INT = 0,
-		@TxInvoiceID INT = null,
+		@TxInvoiceID INT = NULL,
 		@date DATE = '6/1/2016'
 		
 
@@ -31,11 +31,16 @@ IF(Object_ID('tempdb..#Reverse') IS NOT NULL) DROP TABLE #Reverse;
 IF(Object_ID('tempdb..#NontxPayment') IS NOT NULL) DROP TABLE #NontxPayment;
 
 
+--SELECT *FROM  TSI_Tactical.[dbo].[Storage_JUNE_Transactions_To_Reverse] r (NOLOCK) WHERE r.TxPaymentID = 'NULL'
+
+
 SELECT *
 INTO #Reverse
 FROM  TSI_Tactical.[dbo].[Storage_JUNE_Transactions_To_Reverse] r (NOLOCK) 
 WHERE r.TxPaymentId != 'NULL'
 
+
+/* --This includes the Sponsor transfers
 SELECT *
 INTO #NontxPayment
 FROM TSI_Tactical.[dbo].[Storage_JUNE_Transactions_To_Reverse]
@@ -48,7 +53,7 @@ INNER JOIN dbo.TxTransaction t ON t.TxInvoiceId = r.TxInvoiceId
 WHERE TxPaymentID = 'NULL'
 	AND amount != 0 
 	AND txtypeid = 4
-	
+*/
 
 SELECT	i.PartyRoleID
 		, p.RoleID AS MemberID
@@ -64,7 +69,7 @@ INTO #Staging
 --	SELECT *
 -- SELECT r.TxPaymentID
 --FROM #Reverse r 
-FROM #NonTxPayment r 
+FROM #Reverse r 
 INNER JOIN TxTransaction t (NOLOCK) ON t.ItemId = r.TxPaymentID AND t.txtypeId = 4
 INNER JOIN TxInvoice i (NOLOCK) ON i.TxInvoiceId = t.TxInvoiceID 
 INNER JOIN PartyRole p (NOLOCK) ON p.PartyRoleId = i.PartyRoleID
@@ -153,7 +158,7 @@ WHERE 1=1
 --	END
 
 
-
+SELECT * FROM TenderType WHERE TenderTypeID = 137
 	--->>> PAYMENT TRANSACTION INSERT <<<---
 		
 
@@ -245,6 +250,7 @@ IF (@Update = 1)
 			, RecurringDiscount
 			, PIFInstallmentDiscount
 		FROM #TransactionStaging t
+		WHERE t.TxInvoiceId = IIF(@TxInvoiceID IS NULL, t.TxInvoiceID, @TxInvoiceID)
 	END
 
 
@@ -322,11 +328,24 @@ IF (@Update = 0)
 		--FROM #Staging s
 		--LEFT JOIN PaymentProcessRequest p ON p.TxPaymentId = s.TxPaymentId
 		--WHERE s.MemberID IN (SELECT MEMBERID FROM #Exclusion) 
+	IF(@TxInvoiceID IS NOT NULL)
+		BEGIN
+			SELECT p.RoleID
+					, pv.[First Name]
+					, pv.[Last Name]
+					, i.TxInvoiceID
+					, i.TargetDate
+			FROM TxInvoice i
+			INNER JOIN PartyRole p ON p.PartyROleID = i.PartyRoleId
+			INNER JOIN PartyPropertiesReportingView pv ON pv.PartyId = p.PartyID 
+			WHERE i.TxInvoiceID = IIF(@TxInvoiceID IS NULL, i.TxInvoiceID, @TXinvoiceID)
+		END
 
-		
 		SELECT 'ReversingPayment', * FROM #Temp -->> New Payment
 		SELECT 'ReversingTransaction',* FROM #TransactionStaging t -->> Reversing Payment Transaction
-		SELECT 'TransactionToPayoffOriginal', * FROM #RemainingTransactions -->> Reversal of remaining transactions
+		SELECT 'TransactionToPayoffOriginal', p.roleid, * FROM #RemainingTransactions r
+			LEFT JOIN TxInvoice i ON i.TxInvoiceID = r.TxInvoiceId
+			LEFT JOIN PartyRole p ON p.PartyRoleID = i.PartyRoleId  -->> Reversal of remaining transactions
 	END
 
 

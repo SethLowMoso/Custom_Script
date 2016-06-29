@@ -60,7 +60,7 @@ WHERE 1=1
 	AND s.TxInv_ID = IIF(@TxInvoiceID IS NULL, s.TxInv_ID, @TxInvoiceID)
 
 /***********************
-4) Update PaymentProcessRequest to Zero out Amount
+4) Update/Delete PaymentProcessRequest to Zero out Amount
 ***********************/
 IF (@DELETE_RESET = 0 )
 	BEGIN

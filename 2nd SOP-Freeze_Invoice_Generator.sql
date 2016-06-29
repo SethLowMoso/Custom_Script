@@ -1,14 +1,24 @@
-declare @RunDate date = '5/2/2016' --getdate();
+declare @RunDate date = '6/2/2016' --getdate();
 
 IF (OBJECT_ID('tempdb..#FreezeInvoices') IS NOT NULL) DROP TABLE #FreezeInvoices
+
+IF (OBJECT_ID('tempdb..#Stage') IS NOT NULL) DROP TABLE #Stage
+
+SELECT *
+INTO #Stage
+FROM [TSI_tactical].[dbo].[Storage_JUNE_Transactions_To_Reverse] r
+WHERE r.TxPaymentID != 'NULL' 
 
 ;with 
 	CTE_TargetAgreements
 		AS (
-				SELECT mp.TxPaymentId, r.PaymentProcessRequestId, mr.MemberAgreementId
-				FROM [TSI_tactical].[dbo].[Storage_May_PaymentProcessRequestData_Remmoval] r ---UPDATE THIS WITH THE PAYMENT PROCESS REQUEST ROW THAT ARE GETTING REVERSED
+				SELECT mp.TxPaymentId,
+						r.[MOSOPay-Transaction] AS PaymentProcessRequesTID-- r.PaymentProcessRequestId
+						, mr.MemberAgreementId
+				FROM #Stage r ---UPDATE THIS WITH THE PAYMENT PROCESS REQUEST ROW THAT ARE GETTING REVERSED
 				INNER JOIN dbo.MemberAgreementPaymentRequest mp ON MP.TxPaymentId = r.TxPaymentID
 				INNER JOIN dbo.MemberAgreementInvoiceRequest mr ON mr.MemberAgreementInvoiceRequestId = mp.MemberAgreementInvoiceRequestId
+					
 			),			
 	LastSuspensionEnd as
 		(
@@ -97,8 +107,6 @@ INTO #FreezeInvoices
 from
 	dbo.MemberAgreement ma (nolock)
 	INNER JOIN CTE_TargetAgreements ta ON ta.MemberAgreementId = ma.MemberAgreementId
-	--INNER JOIN TSI_Tactical.[dbo].[Storage_March_1st_PaymentProcessRequest_Removal] s ON s.
-	--INNER JOIN tsi_tactical.[dbo].[Storage_Feb_Freeze_InvoiceIssue_FINAL] fin (NOLOCK) ON fin.MemberAgreementId = ma.MemberAgreementID
 
 	inner join dbo.PartyRole pr (nolock) on ma.PartyRoleId = pr.PartyRoleID	
 	inner join dbo.StatusMap sm (nolock) on ma.Status = sm.StatusId 		and sm.StatusMapType = 5
@@ -136,7 +144,8 @@ where 1=1
 	and coalesce(ip_bu.Price,ip_div.Price,ip_ent.Price,0) != 0 -- There is a freeze fee assigned
 	and lbd.BillDate <= @RunDate -- The last bill date is prior to the analysis date
 	--and lbd.BillDate >= @RunDate -- The last bill date on the analysis date
-	and sch.Name = 'Monthly on 1st'  -- we are only converned about memberships billing on the first
+	
+	--and sch.Name = 'Monthly on 1st'  -- we are only concerned about memberships billing on the first
 
 
 

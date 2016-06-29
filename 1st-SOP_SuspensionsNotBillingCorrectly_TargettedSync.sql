@@ -193,8 +193,17 @@ IF (@InvoiceFile = 1)
 --->>> GIVE BACK THE RESULTS OF THE SEARCH
 IF (@Update = 0)
 	BEGIN
+
+		SELECT COUNT(*) 
+		FROM #Storage1 s
+		
 		SELECT * 
-		FROM #Storage1
+		FROM #Storage1 s
+		LEFT JOIN  [Tenant_TSI].[dbo].[CachedIsValidForSync] c on s.memberagreementid = c.memberagreementid
+		WHERE c.MemberAgreementId is null
+
+		
+
 	END
 
 --->>> GENERATING THE SYNC COMMANDS
@@ -214,13 +223,29 @@ IF (@Update = 1)
 				, ba.BusinessUnitId
 				, ba.SuspensionId
 				, NULL as CancellationID
-				, 'These freezes were not going to bill, we synced them proactively to try and clean them up.' AS Notes
+				, 'Atlas suspension cleanup. This should trigger the Sync schedule to clean up these agreements.' AS Notes
 		FROM #Storage1 ba
+
+
+
+
+		INSERT INTO TENANT_TSI.dbo.CachedIsValidForSync 
+		SELECT s.MemberAgreementId AS MemberAgreementID
+				, s.SuspensionId AS SuspensionID
+				, su.Status AS SuspensionStatus
+				, s.SuspensionBegin AS BeginTime
+				, s.SuspensionEnd AS EndTime
+				, GETDATE() AS ValidDate
+		FROM #Storage1 s
+		LEFT JOIN Tenant_TSI.dbo.Suspension su ON su.SuspensionId = s.SuspensionId
+		LEFT JOIN  [Tenant_TSI].[dbo].[CachedIsValidForSync] c on s.memberagreementid = c.memberagreementid
+		WHERE c.MemberAgreementId is null
+			AND su.status IN (1,2)
 
 
 		/***********************************************************************************************/
 
-
+		/*
 		if (object_id('tempdb..#Results') is not null) drop table #Results
 
 		Declare @businessUnitIds INT
@@ -279,4 +304,5 @@ IF (@Update = 1)
 
 		SELECT *
 		FROM #Results
+		*/
 	END
