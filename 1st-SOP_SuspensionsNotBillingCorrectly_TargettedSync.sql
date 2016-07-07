@@ -170,25 +170,25 @@ where 1=1
 
 --->>> GENERATE THE INVOICE FILE IF NEEDED
 ---->>>> THIS SECTION NEEDS WORK AND WON'T FUNCTION AT PRESENT
-IF (@InvoiceFile = 1)
-	BEGIN
-		SELECT 
-		'' AS InvoiceID
-		, MemberID AS OwnerID
-		, 'Primary Account' AS AccountName
-		, SuspensionFeeItem AS ItemName
-		, 1 AS Quantity
-		, FreezeFeePrice AS Price
-		, 'On Account' AS TenderTypeName
-		, '' AS GiftCardNumber
-		, '' ActivityExpirationDate
-		, 'Freeze Fee' InvoiceComment
-		, ItemCode
-		, LocationCode
-		, 1 AS Sequence
-		FROM #Storage1
+--IF (@InvoiceFile = 1)
+--	BEGIN
+--		SELECT 
+--		'' AS InvoiceID
+--		, MemberID AS OwnerID
+--		, 'Primary Account' AS AccountName
+--		, SuspensionFeeItem AS ItemName
+--		, 1 AS Quantity
+--		, FreezeFeePrice AS Price
+--		, 'On Account' AS TenderTypeName
+--		, '' AS GiftCardNumber
+--		, '' ActivityExpirationDate
+--		, 'Freeze Fee' InvoiceComment
+--		, ItemCode
+--		, LocationCode
+--		, 1 AS Sequence
+--		FROM #Storage1
 
-	END
+--	END
 
 --->>> GIVE BACK THE RESULTS OF THE SEARCH
 IF (@Update = 0)
@@ -213,6 +213,7 @@ IF (@Update = 1)
 		/***********************************************************************************************
 		AUDIT _ Using this to track what agreements are getting synced by this process
 		***********************************************************************************************/
+		/*
 		INSERT INTO TSI_TargetedSyncAudit 
 			(Audit_Reason, RoleID, MemberAgreementID, AgreementStatus, BusinessUnitID, SuspensionID, CancellationID, Notes)
 		SELECT 
@@ -225,27 +226,31 @@ IF (@Update = 1)
 				, NULL as CancellationID
 				, 'Atlas suspension cleanup. This should trigger the Sync schedule to clean up these agreements.' AS Notes
 		FROM #Storage1 ba
+		*/
+
+		--insert into tenant_TSI.dbo.CachedIsValidForSync 
+		--SELECT DISTINCT s.MemberAgreementId AS MemberAgreementID
+		--		, s.SuspensionId AS SuspensionID
+		--		, su.Status AS SuspensionStatus
+		--		, s.SuspensionBegin AS BeginTime
+		--		, s.SuspensionEnd AS EndTime
+		--		, GETDATE() AS ValidDate
+		--FROM #Storage1 s
+		--LEFT JOIN Tenant_TSI.dbo.Suspension su ON su.SuspensionId = s.SuspensionId
+		--LEFT JOIN  [Tenant_TSI].[dbo].[CachedIsValidForSync] c on s.memberagreementid = c.memberagreementid
+		--WHERE c.MemberAgreementId is null
+			
+
+
+--SELECT * FROM tenant_TSI.dbo.CachedIsValidForSync v WHERE v.MemberAgreementId = 1038325
 
 
 
-
-		INSERT INTO TENANT_TSI.dbo.CachedIsValidForSync 
-		SELECT s.MemberAgreementId AS MemberAgreementID
-				, s.SuspensionId AS SuspensionID
-				, su.Status AS SuspensionStatus
-				, s.SuspensionBegin AS BeginTime
-				, s.SuspensionEnd AS EndTime
-				, GETDATE() AS ValidDate
-		FROM #Storage1 s
-		LEFT JOIN Tenant_TSI.dbo.Suspension su ON su.SuspensionId = s.SuspensionId
-		LEFT JOIN  [Tenant_TSI].[dbo].[CachedIsValidForSync] c on s.memberagreementid = c.memberagreementid
-		WHERE c.MemberAgreementId is null
-			AND su.status IN (1,2)
 
 
 		/***********************************************************************************************/
 
-		/*
+		
 		if (object_id('tempdb..#Results') is not null) drop table #Results
 
 		Declare @businessUnitIds INT
@@ -304,5 +309,5 @@ IF (@Update = 1)
 
 		SELECT *
 		FROM #Results
-		*/
+		
 	END
