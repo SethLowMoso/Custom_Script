@@ -112,6 +112,8 @@ IF (@Update = 1)
 		UPDATE bd SET bd.Completed_IND = 1
 		FROM TSI_Tactical.dbo.Storage_NS122524_BillDate_vs_DueDate_Mismatch bd (NOLOCK) 
 		WHERE bd.Completed_IND = 0
+
+		--SELECT * FROM TSI_Tactical.dbo.Storage_NS122524_BillDate_vs_DueDate_Mismatch ORDER BY Billdate DESC
 	END
 
 IF (@Update = 2)

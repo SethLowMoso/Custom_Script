@@ -20,11 +20,26 @@ IF (Object_ID('tempdb..#AgreementToImport') IS NOT NULL) DROP TABLE #AgreementTo
 IF (Object_ID('tempdb..#TargetList') IS NOT NULL) DROP TABLE #TargetList
 
 SELECT ROW_NUMBER() over (partition by na.MemberID ORDER BY na.MemberID ASC) as  ROW_Num
-		, *
+		, [First Name]
+		, [Last Name]
+		, MemberRoleID AS MemberID
+		, AgreementName
+		, MemberAgreementID
+		, Item
+		, Location
+		, StatusName
+		, Price
+		, BillingSchedule
+		, CURRENTSTATUS
+		, MOVETO
+		, AGREEMENTIMPORTREF
+		, INSTALLMENTPERPETUALREF
+		, AGREEMENTGROUPREF
+		, BILLINGIMPORTREF
 INTO #TargetList
 --SELECT *
-FROM  [TSI_tactical].[dbo].[Storage_NS132542_SoHo_AgreementImport] na
-ORDER BY MEMBERID, INSTALLMENTPERPETUALREF
+FROM  [TSI_tactical].[dbo].[Storage_July_E34thAgreementMove] na
+ORDER BY na.MemberRoleID, INSTALLMENTPERPETUALREF
 
 DECLARE @BUCode INT = ( SELECT Code FROM BusinessUnit WHERE BusinessUnitID = (SELECT DISTINCT MoveTo FROM TSI_Tactical.dbo.[Storage_NS132542_SoHo_AgreementImport]))
 
@@ -143,27 +158,25 @@ FROM  [TSI_tactical].[dbo].[Storage_NS132542_SoHo_AgreementImport] na
 --IMPORTSERVER.Stage_TSI_HVLP.dbo.[TSI_AgreementToImport$]
 --SELECT COUNT(*) 
 --INSERT INTO [ImportServer].[Stage_TSI_HVLP].[dbo].[AgreementToImport]
-SELECT *
+SELECT 'AgreementToImport',*
 FROM #AgreementToImport
 
 
 --INSERT INTO [ImportServer].[Stage_TSI_HVLP].[dbo].[AgreementItemsToImport]
 --SELECT COUNT(*) 
-SELECT * 
+SELECT 'AgreementItemsToImport',* 
 FROM #AgreementItemsToImport
 
 --SELECT COUNT(*) 
-SELECT * 
-FROM #PaySources p
+--SELECT * FROM #PaySources p
 
 --SELECT COUNT(*) 
-SELECT * 
-FROM #ForObj
+--SELECT * FROM #ForObj
 
 --SELECT COUNT(*)
 --DROP TABLE ImportServer.Stage_TSI_HVLP.dbo.AgreementItemPaysourcesToImport 
 --INSERT INTO [ImportServer].[Stage_TSI_HVLP].[dbo].[AgreementItemPaysourcesToImport]
-SELECT *
+SELECT 'AgreementItemPaysourceImport',*
 FROM #AgreementItemPaysourcesToImport
 --WHERE PaySourceReferenceId = -1
 

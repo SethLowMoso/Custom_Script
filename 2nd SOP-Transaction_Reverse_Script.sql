@@ -12,7 +12,7 @@ DECLARE @Update INT = 1,
 		@MemberID VARCHAR(10) = NULL,
 		@Validate INT = 0,
 		@TxInvoiceID INT = NULL,
-		@date DATE = '6/1/2016'
+		@date DATE = '7/1/2016'
 		
 
 		;
@@ -36,7 +36,7 @@ IF(Object_ID('tempdb..#NontxPayment') IS NOT NULL) DROP TABLE #NontxPayment;
 
 SELECT *
 INTO #Reverse
-FROM  TSI_Tactical.[dbo].[Storage_JUNE_Transactions_To_Reverse] r (NOLOCK) 
+FROM  TSI_Tactical.[dbo].[Storage_JULY_TransactionsToRemove] r (NOLOCK) 
 WHERE r.TxPaymentId != 'NULL'
 
 
@@ -158,7 +158,7 @@ WHERE 1=1
 --	END
 
 
-SELECT * FROM TenderType WHERE TenderTypeID = 137
+--SELECT * FROM TenderType WHERE TenderTypeID = 137
 	--->>> PAYMENT TRANSACTION INSERT <<<---
 		
 
@@ -313,15 +313,15 @@ IF (@Update = 1)
 IF (@Update = 0)
 	BEGIN	
 		
-		SELECT * FROM #Exclusion
+		--SELECT * FROM #Exclusion
 		
-		SELECT p.RoleID, s.* 
-		--INTO TSI_Tactical.dbo.Storage_May_TransactionsBeingReversed
-		FROM #Staging  s
-		LEFT JOIN PartyRole p ON s.PartyRoleId = p.PartyRoleID
-		WHERE 1=1
-			AND s.MemberID NOT IN (SELECT MEMBERID FROM #Exclusion)
-			AND TxInvoiceID = IIF(@TxInvoiceID IS NOT NULL, @TxInvoiceID, TxInvoiceID)
+		--SELECT p.RoleID, s.* 
+		----INTO TSI_Tactical.dbo.Storage_May_TransactionsBeingReversed
+		--FROM #Staging  s
+		--LEFT JOIN PartyRole p ON s.PartyRoleId = p.PartyRoleID
+		--WHERE 1=1
+		--	AND s.MemberID NOT IN (SELECT MEMBERID FROM #Exclusion)
+		--	AND TxInvoiceID = IIF(@TxInvoiceID IS NOT NULL, @TxInvoiceID, TxInvoiceID)
 
 			
 		--SELECT s.TxPaymentId, p.PaymentProcessRequestId
@@ -343,7 +343,8 @@ IF (@Update = 0)
 
 		SELECT 'ReversingPayment', * FROM #Temp -->> New Payment
 		SELECT 'ReversingTransaction',* FROM #TransactionStaging t -->> Reversing Payment Transaction
-		SELECT 'TransactionToPayoffOriginal', p.roleid, * FROM #RemainingTransactions r
+		SELECT 'TransactionToPayoffOriginal', p.roleid, * 
+			FROM #RemainingTransactions r
 			LEFT JOIN TxInvoice i ON i.TxInvoiceID = r.TxInvoiceId
 			LEFT JOIN PartyRole p ON p.PartyRoleID = i.PartyRoleId  -->> Reversal of remaining transactions
 	END

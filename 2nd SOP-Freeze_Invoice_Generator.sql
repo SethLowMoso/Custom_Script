@@ -1,4 +1,6 @@
-declare @RunDate date = '6/2/2016' --getdate();
+declare @RunDate date = '7/2/2016' --getdate();
+
+
 
 IF (OBJECT_ID('tempdb..#FreezeInvoices') IS NOT NULL) DROP TABLE #FreezeInvoices
 
@@ -6,7 +8,7 @@ IF (OBJECT_ID('tempdb..#Stage') IS NOT NULL) DROP TABLE #Stage
 
 SELECT *
 INTO #Stage
-FROM [TSI_tactical].[dbo].[Storage_JUNE_Transactions_To_Reverse] r
+FROM [TSI_tactical].[dbo].[Storage_JULY_TransactionsToRemove] r
 WHERE r.TxPaymentID != 'NULL' 
 
 ;with 

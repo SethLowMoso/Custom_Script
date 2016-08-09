@@ -269,6 +269,8 @@ IF (@Update = 1)
 		declare chk cursor for 
 		select distinct BusinessUnitId, MemberAgreementId
 		from #Storage1 ba
+		ORDER BY ba.BusinessUnitID
+		
 
 
 		open chk

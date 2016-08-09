@@ -21,8 +21,8 @@ SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
 	declare @BillingStartDate date;
 	declare @BillingEndDate datetime;
 
-	SET @OriginaBilllingDate = '7/1/2016'--CONVERT(DATE, GETDATE(), 101)--'9/4/2015'
-	SET @BillingStartDate = '7/1/2016'--CONVERT(DATE, GETDATE(), 101)--'9/4/2015'--
+	SET @OriginaBilllingDate = CONVERT(DATE, GETDATE(), 101)--'9/4/2015' --'7/1/2016'--
+	SET @BillingStartDate = CONVERT(DATE, GETDATE(), 101)--'9/4/2015'--'7/1/2016'--
 	SET @BillingEndDate = DATEADD(ss,-1,CONVERT(DATETIME,DATEADD(DAY,1,CONVERT(DATE,GETDATE(),101))))--'9/4/2015 23:59:59'--
 
 
@@ -446,12 +446,19 @@ SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
 
 
 
-SELECT *
+SELECT 'Payment', *
+FROM #Final f
+WHERE 1=1
+--		AND TxPaymentId IS NULL
+		AND TxType = 'Payment'
+
+SELECT 'Sale' ,*
 FROM #Final
 WHERE 1=1
-		AND TxPaymentId IS NULL
-		AND TxTypeId = 'Payment'
+--		AND TxPaymentId IS NULL
+		AND TxType = 'SALE'
 
+/*
 DECLARE @BillingValidation INT = 0,
 		@DevCore BIT = 0,
 		@StagingTable INT = 0,
@@ -739,4 +746,5 @@ WHERE TxPaymentId IN (23986710,23985700)
 SELECT* 
 FROM BusinessUnit 
 WHERE businessunitid  = 227
-*/
+*/*/
+
